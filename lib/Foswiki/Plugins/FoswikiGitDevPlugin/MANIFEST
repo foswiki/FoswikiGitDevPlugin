@@ -1,0 +1,9 @@
+data/System/FoswikiGitDevPlugin.txt 0644
+extensionsdo.pl 0755
+lib/Foswiki/Plugins/FoswikiGitDevPlugin.pm 0644
+lib/Foswiki/Plugins/FoswikiGitDevPlugin/Config.spec 0644
+lib/Foswiki/Plugins/FoswikiGitDevPlugin/Extension.pm 0644
+lib/Foswiki/Plugins/FoswikiGitDevPlugin/GitSvnExtension.pm 0644
+lib/Foswiki/Plugins/FoswikiGitDevPlugin/Site.pm 0644
+lib/Foswiki/Plugins/FoswikiGitDevPlugin/SvnSite.pm 0644
+pub/System/FoswikiGitDevPlugin/diagram.png 0644
