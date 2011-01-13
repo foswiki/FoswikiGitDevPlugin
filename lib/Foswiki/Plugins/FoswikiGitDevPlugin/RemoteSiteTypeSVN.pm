@@ -6,27 +6,38 @@
 
 =cut
 
-package Foswiki::Contrib::FoswikiGitDevPlugin::SvnSite;
+package Foswiki::Plugins::FoswikiGitDevPlugin::RemoteSiteTypeSVN;
 use strict;
 use warnings;
 
-use SVN::Client;
-use Foswiki::Plugins::FoswikiGitDevPlugin::Site;
-our @ISA = qw( Foswiki::Plugins::FoswikiGitDevPlugin::Site );
+use Assert;
+use Data::Dumper;
+use SVN::Client();
+use Foswiki::Plugins::FoswikiGitDevPlugin::Extension();
+use Foswiki::Plugins::FoswikiGitDevPlugin::RemoteSiteType();
+our @ISA = qw( Foswiki::Plugins::FoswikiGitDevPlugin::RemoteSiteType );
 
 sub new {
-    my ( $class, %args ) = @_;
-    my $this = bless( \%args, $class );
+    my ( $class, $name, %args ) = @_;
+    my $this = $class->SUPER::new( $name, %args );
 
-    $this->{extensions} = undef;
-    $this->{ctx}        = undef;
-    $this->{populated}  = undef;
-
-    #    $this->{branches}   = undef;
-    #    $this->{type}       = 'svn';
-    #    $this->{url}        = undef;
+    $this->{type}       = 'SVN';
+    $this->{extensions} = ();
+    $this->{ctx}        = SVN::Client->new();
+    $this->{populated}  = 0;
 
     return $this;
+}
+
+sub destroy {
+    my ($this) = @_;
+
+    $this->{branches}   = undef;
+    $this->{extensions} = undef;
+    $this->{ctx}        = undef;
+    $this->{url}        = undef;
+
+    return $this->SUPER::destroy();
 }
 
 sub ensurePopulated {
@@ -43,16 +54,18 @@ sub populate {
     my ($this) = @_;
 
     if ( not $this->{ctx} ) {
-        $this->{ctx} = SVN::Client->new();
+
     }
     while ( my ( $branch, $branchdata ) = each( %{ $this->{branches} } ) ) {
 
         # If it contains a path key, then assume we need to populate the list
         # of extensions this branch contains via SVN listing
         if ( $branchdata->{path} ) {
-            writeDebug( "Listing $svninfo->{url}/$branchdata->{path}",
-                'populate' );
-            @extensions_in_branch =
+            ASSERT( $branchdata->{path} );
+            ASSERT( $this->{url} );
+            $this->writeDebug( "Listing $this->{url}/$branchdata->{path}",
+                'populate', 2 );
+            my @extensions_in_branch =
               keys %{ $this->{ctx}
                   ->ls( $this->{url} . '/' . $branchdata->{path}, 'HEAD', 0 ) };
             foreach my $ext (@extensions_in_branch) {
@@ -70,31 +83,28 @@ sub populate {
             }
         }
     }
+    $this->writeDebug(
+        'Found '
+          . scalar( keys %{ $this->{extensions} } ) . ': '
+          . join( ', ', sort( keys %{ $this->{extensions} } ) ),
+        'populate', 4
+    );
+
+  #    $this->writeDebug('Dump: ' . Dumper($this->{extensions}), 'populate', 5);
     $this->{populated} = 1;
 
     return;
 }
 
-sub getExtension {
-    my ( $this, $extension ) = @_;
-
-    $this->ensurePopulated();
-
-    return $this->{extensions}->{$extension};
-}
-
 sub _addExtensionBranch {
     my ( $this, $extension, $branch, $path ) = @_;
-    my $extObj = $this->extensions->{$extension};
 
-    if ( not $extObj ) {
-        $this->{extensions}->{$extension} =
-          Foswiki::Contrib::FoswikiGitDevPlugin::Extension->new($extension);
-        $extObj = $this->{extensions}->{$extension};
+    if ( not exists $this->{extensions}->{$extension} ) {
+        $this->{extensions}->{$extension} = {};
     }
-    $extObj->addSvnBranch( $this, $branch, $path );
+    $this->{extensions}->{$extension}->{$branch} = $path;
 
-    return $extObj;
+    return;
 }
 
 sub listExtensionNames {
@@ -115,9 +125,9 @@ sub setupGitRepo {
             each( %{ $extObj->getSvnBranches() } ) )
         {
             if ( $branch ne 'trunk' ) {
-                writeDebug(
+                $this->writeDebug(
 "Aliasing refs/remotes/$branchdata->{path} as origin/$branch",
-                    'setupGitRepo'
+                    'setupGitRepo', 3
                 );
                 do_commands(<<"HERE");
 cd $repoDir
@@ -125,9 +135,9 @@ git update-ref refs/remotes/$branchdata->{path} origin/$branch
 HERE
             }
         }
-        writeDebug(
+        $this->writeDebug(
             "Initialising $this->{url}/$trunkPath as trunk & origin/master",
-            'setupGitRepo' );
+            'setupGitRepo', 3 );
         do_commands(<<"HERE");
 cd $repoDir
 git update-ref refs/remotes/trunk origin/master
@@ -136,17 +146,18 @@ HERE
         $success = 1;
     }
     else {
-        writeDebug( "Couldn't find $extension at $this->{url} in any branch",
-            'setupGitRepo' );
+        $this->writeDebug(
+            "Couldn't find $extension at $this->{url} in any branch",
+            'setupGitRepo', 3 );
     }
 
     return $success;
 }
 
 sub do_commands {
-    my ($commands) = @_;
+    my ( $this, $commands ) = @_;
 
-    writeDebug( $commands, 'do_commands' );
+    $this->writeDebug( $commands, 'do_commands', 3 );
 
     #local $ENV{PATH} = untaint( $ENV{PATH} );
     #`$commands`;
@@ -155,10 +166,10 @@ sub do_commands {
 }
 
 sub writeDebug {
-    my ( $message, $method ) = @_;
+    my ( $this, $message, $method, $level ) = @_;
 
     return Foswiki::Plugins::FoswikiGitDevPlugin::writeDebug( $message, $method,
-        __PACKAGE__ );
+        $level, __PACKAGE__ );
 }
 
 1;

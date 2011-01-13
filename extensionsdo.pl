@@ -69,6 +69,8 @@ BEGIN {
    #	$ENV{FOSWIKI_ACTION} = 'view';
     ### initialise the bits we need (don't need a full session after all)
     require Foswiki::Plugins::FoswikiGitDevPlugin::CLI;
+    Foswiki::Plugins::FoswikiGitDevPlugin::CLI::init( $fetchedExtensions_dir,
+        $foswikilib_dir );
 }
 
 sub exec_options {
@@ -103,7 +105,6 @@ sub exec_options {
             writeDebug( "The action is '$action' with args: " . Dumper($args),
                 'exec_options', 3 );
             if ( exists $dispatch{$action} ) {
-				Foswiki::Plugins::FoswikiGitDevPlugin::CLI::init($fetchedExtensions_dir, $foswikilib_dir, $debuglevel);
                 $success = $dispatch{$action}->($args);
             }
             else {
@@ -118,11 +119,11 @@ sub exec_options {
 ###############################################################################
 
 GetOptions(
-    \%options,      'help+',
-    'man+',         'usage+',
-    'version+',     'debug+',
-    'report=s@{,}', 'fetch=s@{,}',
-    'update=s@{,}', 'checkout=s@{2,}',
+    \%options,          'help+',
+    'man+',             'usage+',
+    'version+',         'debug+',
+    'report=s@{,}',     'fetch=s@{,}',
+    'update=s@{,}',     'checkout=s@{2,}',
     'docommand=s@{2,}', 'setupremote=s@{,}'
 ) or pod2usage(2);
 

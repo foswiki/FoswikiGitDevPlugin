@@ -2,7 +2,7 @@
 
 =begin TML
 
----+ package FoswikiGitDevPlugin::Site
+---+ package FoswikiGitDevPlugin::RemoteSiteTypeGitTrackingSVN
 
 A site might be a collection of repositories (supporting the repo-per-extension
 model), or a single repository that supports partial checkouts (such as
@@ -12,17 +12,29 @@ See the destroy() method
 
 =cut
 
-package Foswiki::Plugins::FoswikiGitDevPlugin::Site;
+package Foswiki::Plugins::FoswikiGitDevPlugin::RemoteSiteTypeGitTrackingSVN;
 use strict;
 use warnings;
 
+use Assert;
+use Data::Dumper;
+use Net::GitHub::V2::Repositories();
+
+use Foswiki::Plugins::FoswikiGitDevPlugin::RemoteSiteType();
+our @ISA = qw( Foswiki::Plugins::FoswikiGitDevPlugin::RemoteSiteType );
+
 sub new {
-    my ( $class, $name, $type, %args ) = @_;
+    my ( $class, $name, %args ) = @_;
     my $this = bless( \%args, $class );
 
-    $this->{type} = $type;
+    $this->{type} = 'GitTrackingSVN';
     $this->{name} = $name;
     $this->{populated} ||= 0;
+    $this->{extensions} = {};
+    $this->{excluded}   = {};
+
+    #$this->writeDebug( 'Built ' . __PACKAGE__ . ' with: ' . Dumper($this),
+    #    'new', 4 );
 
     return $this;
 }
@@ -30,75 +42,86 @@ sub new {
 sub destroy {
     my ($this) = @_;
 
-    $this->{type}      = undef;
-    $this->{name}      = undef;
-    $this->{populated} = undef;
+    $this->{type}       = undef;
+    $this->{name}       = undef;
+    $this->{extensions} = undef;
+    $this->{excluded}   = undef;
+    $this->{populated}  = undef;
 
     return;
 }
 
-sub ensurePopulated {
-    my ($this) = @_;
+sub populateFromGithub {
+    my ( $this, $owner, $repo ) = @_;
+    my %excluded;    # list to exclude
+    $repo ||= 'foswiki';
 
-    if ( not $this->{populated} ) {
-        $this->populate();
+    # setup the excluded extensions
+    foreach my $exclude ( @{ $this->{exclude} } ) {
+        $excluded{$exclude} = 1;
+    }
+    $this->writeDebug( "Excluding: " . join( ', ', keys %excluded ),
+        'populateFromGithub', 3 );
+    $this->writeDebug( "Listing github repos from $owner...",
+        'populateFromGithub', 2 );
+    $this->{githubrepo} = Net::GitHub::V2::Repositories->new(
+        owner   => $owner,
+        version => 2,
+        repo    => $repo
+    );
+    foreach my $githubThing ( sort( @{ $this->{githubrepo}->list() } ) ) {
+        if ( not $excluded{ $githubThing->{name} } ) {
+            $this->{extensions}->{ $githubThing->{name} } = {
+                githubdata => $githubThing,
+                url        => "$this->{url}/$githubThing->{name}"
+            };
+        }
+        else {
+            $this->{excluded}->{ $githubThing->{name} } = 1;
+        }
+    }
+    $this->writeDebug(
+        'Found '
+          . scalar( keys %{ $this->{extensions} } ) . ': '
+          . join( ', ', sort( keys %{ $this->{extensions} } ) ),
+        'populateFromGithub', 4
+    );
+    if ( scalar( keys %{ $this->{excluded} } ) ) {
+        $this->writeDebug(
+            'Ignored/excluded '
+              . scalar( keys %{ $this->{excluded} } ) . ': '
+              . join( ', ', sort( keys %{ $this->{excluded} } ) ),
+            'populateFromGithub', 4
+        );
     }
 
-    return $this->{populated};
+    return;
 }
 
 sub populate {
     my ($this) = @_;
 
-    assert( 0, "Method not implemented" );
+    ASSERT( $this->{url} );
+    if ( $this->{url} =~
+        /^(\w+:\/\/([^\@]+\@)?)?\bgithub\.com\/([^\/]*)(\/([^\/]+))?/i )
+    {
+        $this->populateFromGithub( $3, $5 );
+    }
+    else {
+        ASSERT( 0,
+            'Sorry, only know how to list github repositories so far...' );
+    }
 
-    #populated list of extensions, etc
-    #$this->{populated} = 1;
-
-    return;
-}
-
-sub hasExtension {
-    my ( $this, $extension ) = @_;
-
-    assert( 0, "Method not implemented" );
-
-    #$this->ensurePopulated();
-    #return $this->{extensions}->{$extension};
-
-    return;
-}
-
-sub listExtensions {
-    my ($this) = @_;
-
-    return keys %{ $this->{extensions} };
-}
-
-sub listExtensionBranches {
-    my ( $this, $extension ) = @_;
-
-    assert( 0, "Method not implemented" );
-
-    return;
-}
-
-sub do_commands {
-    my ($commands) = @_;
-
-    writeDebug( $commands, 'do_commands' );
-
-    #local $ENV{PATH} = untaint( $ENV{PATH} );
-    #`$commands`;
+    $this->{populated} = 1;
 
     return;
 }
 
 sub writeDebug {
-    my ( $this, $message, $method ) = @_;
+    my ( $this, $message, $method, $level ) = @_;
 
     return Foswiki::Plugins::FoswikiGitDevPlugin::writeDebug( $message, $method,
-        __PACKAGE__ );
+        $level, __PACKAGE__ );
 }
 
 1;

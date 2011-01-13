@@ -18,8 +18,9 @@ use Assert;
 use Data::Dumper;
 use File::Spec();
 use Foswiki::Plugins::FoswikiGitDevPlugin::Extension();
-use Exporter 'import';
-our @EXPORT_OK = qw(gitCommand);
+
+#use Exporter 'import';
+#our @EXPORT_OK = qw(gitCommand);
 
 our $VERSION = '$Rev$';
 our $RELEASE = '0.1.1';
@@ -48,18 +49,21 @@ sub init {
     {
         my $remoteclass =
           __PACKAGE__ . '::' . 'RemoteSiteType' . $remotesite->{type};
-        $remotes{$name} = $remoteclass->new( %{$remotesite} );
+        require File::Spec->catfile( split( /::/, $remoteclass . '.pm' ) );
+        $remotesites{$name} = $remoteclass->new( $name, %{$remotesite} );
     }
 
   # Round up all the extension dirs (assume they are git repos/checkouts) and
   # create ext. objects on each (which matches them up with git site & svn url).
     opendir( $dh, $fetchedExtensions_dir )
       || die("Failed to open $fetchedExtensions_dir");
-    foreach my $dir ( readdir($dh) ) {
-        if ( $dir ne '.' and $dir ne '..' and -d $dir ) {
-            my $name = pathToExtensionName($dir);
+    foreach my $subdir ( sort( readdir($dh) ) ) {
+        my $dir = File::Spec->catdir( $fetchedExtensions_dir, $subdir );
+        if ( $subdir ne '.' and $subdir ne '..' and -d $dir ) {
+            my $name = pathToExtensionName($subdir);
+            writeDebug( "Checking $name has $dir", 'init', 4 );
             if ($name) {
-                $extensions{$extension} = setupExtension( $name, $dir );
+                $extensions{$name} = setupExtension( $name, $dir );
             }
             else {
                 writeDebug( "$dir doesn't look like an extension name",
@@ -68,13 +72,53 @@ sub init {
         }
     }
     closedir($dh);
-    writeDebug(
-        'remotes: '
-          . Dumper( \%remotesites )
-          . 'extensions: '
-          . Dumper( \%extensions ),
-        'init', 1
-    );
+
+    #writeDebug(
+    #    'remotes: '
+    #      . Dumper( \%remotesites )
+    #      . 'extensions: '
+    #      . Dumper( \%extensions ),
+    #    'init', 4
+    #);
+
+    return;
+}
+
+sub sortedValues {
+    my (%hash) = @_;
+    my @values;
+
+    foreach my $key ( sort ( keys %hash ) ) {
+        push( @values, $hash{$key} );
+    }
+
+    return @values;
+}
+
+sub report {
+    my (%args) = @_;
+    my %states =
+      Foswiki::Plugins::FoswikiGitDevPlugin::Extension::getReportStates();
+    my $str = join( "\t", sort( keys %states ), 'Extension' );
+
+    foreach my $extName ( @{ $args{extensions} } ) {
+        my %extStates =
+          $extensions{$extName}->report( states => $args{states} );
+        my $reportable;
+
+        foreach my $state ( keys %states ) {
+            if ( $extStates{$state} ) {
+                $reportable = 1;
+            }
+            else {
+                $extStates{$state} = '';
+            }
+        }
+        if ($reportable) {
+            $str .= "\n" . join( "\t", sortedValues(%extStates), $extName );
+        }
+    }
+    print $str . "\n";
 
     return;
 }
@@ -82,7 +126,7 @@ sub init {
 sub pathToExtensionName {
     my ($path) = @_;
 
-    $path =~ /^.*?[\/\\]([^\.\/\\]+)(\.git)?$/;
+    $path =~ /[\/\\]?([^\.\/\\]+)(\.git)?$/;
 
     return $1;
 }
@@ -105,13 +149,21 @@ sub listUniverseExtensionNames {
 
 # TODO: Use Foswiki::Sandbox, if we have a Foswiki::Sandbox available
 sub gitCommand {
-    my ($path, $command) = @_;
+    my ( $path, $command ) = @_;
 
     local $ENV{PATH} = untaint( $ENV{PATH} );
 
-	my $data = `cd $path && $command`;
+    writeDebug( "path: $path, command: $command", 'gitCommand', 4 );
+    my $data = `cd $path && $command`;
 
-    return ($data, $? >> 8);
+    return ( $data, $? >> 8 );
+}
+
+sub untaint {
+    no re 'taint';
+    $_[0] =~ /^(.*)$/;
+    use re 'taint';
+    return $1;
 }
 
 sub updateExtensions {
@@ -146,7 +198,8 @@ sub updateExtension {
 sub setupExtension {
     my ( $name, $fullpath ) = @_;
     my $extensionObj =
-      Foswiki::Plugins::FoswikiGitDevPlugin::Extension->new( $name, path => $fullpath );
+      Foswiki::Plugins::FoswikiGitDevPlugin::Extension->new( $name, undef,
+        path => $fullpath );
 
     $extensions{$name} = $extensionObj;
 
@@ -172,11 +225,13 @@ sub guessRemoteSiteByExtensionName {
     my ($name) = @_;
     my $remoteSiteObj;
 
-    while ( not $remoteObj
-        and ( my ( $trialname, $trialRemoteObj ) = each(%remotesites) ) )
-    {
-        if ( $trialRemoteObj->hasExtensionName($name) ) {
-            $remoteSiteObj = $trialRemoteObj;
+    while ( my ( $trialname, $trialRemoteObj ) = each(%remotesites) ) {
+        if ( not defined $remoteSiteObj ) {
+            writeDebug( "Checking for $name in $trialname...",
+                'guessRemoteSiteByExtensionName', 4 );
+            if ( $trialRemoteObj->hasExtensionName($name) ) {
+                $remoteSiteObj = $trialRemoteObj;
+            }
         }
     }
 
@@ -184,9 +239,9 @@ sub guessRemoteSiteByExtensionName {
 }
 
 sub guessExtensionPath {
-	my ($name) = @_;
+    my ($name) = @_;
 
-	return File::Spec->catdir($fetchedExtensions_dir, $name);
+    return File::Spec->catdir( $fetchedExtensions_dir, $name );
 }
 
 =begin TML

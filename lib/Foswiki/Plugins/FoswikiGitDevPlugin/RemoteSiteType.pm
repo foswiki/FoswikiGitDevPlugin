@@ -20,6 +20,8 @@ package Foswiki::Plugins::FoswikiGitDevPlugin::RemoteSiteType;
 use strict;
 use warnings;
 
+use Assert;
+
 sub new {
     my ( $class, $name, %args ) = @_;
     my $this = bless( \%args, $class );
@@ -54,7 +56,7 @@ sub ensurePopulated {
 sub populate {
     my ($this) = @_;
 
-    assert( 0, 'Method not implemented' );
+    ASSERT( 0, 'Method not implemented' );
 
     #populated list of extensions, etc
     #$this->{populated} = 1;
@@ -65,18 +67,15 @@ sub populate {
 sub hasExtensionName {
     my ( $this, $extension ) = @_;
 
-    assert( 0, 'Method not implemented' );
+    $this->ensurePopulated();
 
-    #$this->ensurePopulated();
-    #return $this->{extensions}->{$extension};
-
-    return;
+    return ( exists $this->{extensions}->{$extension} ) ? 1 : 0;
 }
 
 sub hasExtensionURL {
     my ( $this, $url ) = @_;
 
-    assert( 0, 'Method not implemented' );
+    ASSERT( 0, 'Method not implemented' );
 
     #$this->ensurePopulated();
     #return $this->{extensions}->{$extension};
@@ -90,8 +89,14 @@ sub getExtensionNames {
     return keys %{ $this->{extensions} };
 }
 
+sub initExtensionRepo {
+    my ($this) = @_;
+
+    return;
+}
+
 sub do_commands {
-    my ($commands) = @_;
+    my ( $this, $commands ) = @_;
 
     $this->writeDebug( $commands, 'do_commands', 3 );
 

@@ -23,17 +23,15 @@ use Data::Dumper;
 
 my $lib_dir;
 my $debuglevel;
+my $fetchedExtensions_dir;
 
 sub init {
-    my ( $fetchedExtensions_dir, $foswikilibs_dir, $debug ) = @_;
+    ( $fetchedExtensions_dir, $lib_dir, $debuglevel ) = @_;
 
     ASSERT( defined $fetchedExtensions_dir );
-    ASSERT( defined $debug );
-    ASSERT( defined $foswikilibs_dir );
-    $lib_dir    = $foswikilibs_dir;
-    $debuglevel = $debug;
+    ASSERT( defined $lib_dir );
 
-    return Foswiki::Plugins::FoswikiGitDevPlugin::init($fetchedExtensions_dir, $debug);
+    return;
 }
 
 sub doReport {
@@ -45,7 +43,8 @@ sub doReport {
     my @extensions;
 
     ASSERT( scalar( @{$args} ) > 0 );
-
+    Foswiki::Plugins::FoswikiGitDevPlugin::init( $fetchedExtensions_dir,
+        $debuglevel );
     foreach my $arg ( @{$args} ) {
         if ( not scalar(@extensions) and $allowed_states{$arg} ) {
             $found_states{$arg} = 1;
@@ -83,6 +82,8 @@ sub doFetch {
     my @extensions;
 
     ASSERT( scalar( @{$args} ) > 0 );
+    Foswiki::Plugins::FoswikiGitDevPlugin::init( $fetchedExtensions_dir,
+        $debuglevel );
 
     @extensions = expandExtensions($args);
 
@@ -97,6 +98,8 @@ sub doUpdate {
 
     ASSERT( scalar( @{$args} ) > 0 );
 
+    Foswiki::Plugins::FoswikiGitDevPlugin::init( $fetchedExtensions_dir,
+        $debuglevel );
     @extensions = expandExtensions($args);
 
     writeDebug( "Updating these: " . Dumper( \@extensions ), 'doUpdate', 3 );
@@ -110,6 +113,8 @@ sub doCheckout {
     my @extensions;
 
     ASSERT( scalar( @{$args} ) > 1 );
+    Foswiki::Plugins::FoswikiGitDevPlugin::init( $fetchedExtensions_dir,
+        $debuglevel );
     $ref = $args->[0];
 
     # Take a slice omitting the first command element
@@ -129,6 +134,8 @@ sub doCommand {
     my @extensions;
 
     ASSERT( scalar( @{$args} ) > 1 );
+    Foswiki::Plugins::FoswikiGitDevPlugin::init( $fetchedExtensions_dir,
+        $debuglevel );
     $command = $args->[0];
 
     # Take a slice omitting the first command element
@@ -155,6 +162,7 @@ sub expandExtensions {
     ASSERT( ref($args) eq 'ARRAY' );
     ASSERT( scalar( @{$args} ) > 0 );
     if ( exists $special{ $args->[0] } ) {
+        writeDebug( "Expanding $args->[0]", 'expandExtensions', 3 );
         @extensions = $special{ $args->[0] }->();
     }
     else {
