@@ -169,11 +169,10 @@ See L<http://foswiki.org/Development/MoveCodeRepositoryToGit>
 
 =over
 
-=item --report [<state>]
+=item --report [<states>]
 
-report state (ahead, behind, current, dirty, missing, remoteless) of extension
-repositories or list only those with specified state(s) (--report may be
-repeated)
+report state (M, D, A, ?, dirty...) of extension repositories or list only
+those with specified state(s) (--report MDA same as --report dirty)
 
 B<NOTE:> 'missing' state is mainly useful with <modules> spec of 'universe'
 

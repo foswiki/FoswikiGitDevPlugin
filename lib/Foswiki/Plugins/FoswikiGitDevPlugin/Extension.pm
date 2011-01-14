@@ -29,11 +29,8 @@ use File::Path();
 
 #use Foswiki::Plugins::FoswikiGitDevPlugin 'Foswiki::Plugins::FoswikiGitDevPlugin::gitCommand';
 
-# If you have a particular remote site in mind when creating an extension,
-# you can pass in the $remoteSiteObj rather than leave it up to the guessing
-# mechanism
 sub new {
-    my ( $class, $name, $remoteSiteObj, %args ) = @_;
+    my ( $class, $name, %args ) = @_;
     my $this = bless( \%args, $class );
 
     ASSERT( defined $name );
@@ -44,15 +41,13 @@ sub new {
     }
     if ( not -d $this->{path} or not $this->isGitRepo() ) {
         $this->writeDebug(
-            "$this->{path} doesn't exist or not a git repo for $this->{name}",
-            'new', 1 );
+            "$this->{name} doesn't eixst or invalid git repo at $this->{path}",
+            'new', 1
+        );
     }
     else {
-        $this->writeDebug(
-"$this->{path} already exists with valid git repo for $this->{name}",
-            'new', 2
-        );
-        $this->initRepo($remoteSiteObj);
+        $this->writeDebug( "$this->{name} exists already with valid git repo",
+            'new', 2 );
     }
 
     return $this;
@@ -84,7 +79,7 @@ sub initRepo {
     my $foundRemote;
 
     ASSERT($mkpath_success);
-    $this->writeDebug( "Making $this->{name}...", 'initRepo', 3 );
+    $this->writeDebug( "Making $this->{name}...", 'initRepo', 5 );
     if ( not defined $remoteSiteObj ) {
         $remoteSiteObj =
           Foswiki::Plugins::FoswikiGitDevPlugin::guessRemoteSiteByExtensionName(
@@ -128,7 +123,7 @@ sub isGitRepo {
       Foswiki::Plugins::FoswikiGitDevPlugin::gitCommand( $this->{path},
         'git status --porcelain' );
 
-    $this->writeDebug( "Data: $data, Status: $status", 'isGitRepo', 4 );
+    #    $this->writeDebug( "Data: $data, Status: $status", 'isGitRepo', 4 );
     if ( $status == 0 ) {
         $status = 1;
     }
@@ -159,41 +154,45 @@ sub isBare {
 }
 
 sub getReportStates {
+    return ( M => 1, A => 1, D => 1, R => 1, C => 1, U => 1, '?' => 1 );
+}
 
-    # Extensions can't be missing if $this has been initialised
-    return (
-        ahead      => 1,
-        behind     => 1,
-        current    => 1,
-        remoteless => 1,
-        dirty      => 1
-    );
+sub getSpecialReportStates {
+    return ( dirty => 'MADRCU' );
 }
 
 sub report {
-    my ( $this, %states ) = @_;
+    my ( $this, %reportStates ) = @_;
     my ($statusoutput) =
       Foswiki::Plugins::FoswikiGitDevPlugin::gitCommand( $this->{path},
         'git status --porcelain' );
-    my %dispatch = (
-        ahead  => sub { return $statusoutput =~ m/Your branch is ahead/xsi; },
-        behind => sub { return $statusoutput =~ m/Your branch is behind/xsi; },
-        current => sub { },
-        dirty   => sub { return ( $statusoutput =~ m/^\s*M/xsi ); }
-    );
-    my %reportStates;
+    my %states;
+    my $reportable    = 0;
+    my %allowedStates = $this->getReportStates();
 
-    if ( not scalar( keys %states ) ) {
-        %states = $this->getReportStates();
+    if ( not scalar( keys %reportStates ) ) {
+        %reportStates = %allowedStates;
     }
 
-    foreach my $state ( sort( keys %dispatch ) ) {
-        if ( $dispatch{$state}->() ) {
-            $reportStates{$state} = 1;
+#	$this->writeDebug("Reporting " . join(', ', keys %reportStates), 'report', 4);
+
+    foreach my $line ( split( /\n/, $statusoutput ) ) {
+        my ( $x, $y ) = ( $line =~ /^(.)(.)/ );
+
+        if ( $reportStates{$x} or $reportStates{$y} ) {
+            $reportable = 1;
+        }
+        if ( $allowedStates{$x} ) {
+            $states{$x} += 1;
+        }
+        if ( $allowedStates{$y} ) {
+            $states{$y} += 1;
         }
     }
 
-    return %reportStates;
+    #	$this->writeDebug("Got " . join(', ', sort(keys %states)), 'report', 4);
+
+    return $reportable ? %states : ();
 }
 
 sub fetch {

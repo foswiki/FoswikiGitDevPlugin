@@ -34,43 +34,69 @@ sub init {
     return;
 }
 
+sub doReportParseArg {
+    my ( $arg, $found ) = @_;
+    my %allowed_states =
+      Foswiki::Plugins::FoswikiGitDevPlugin::Extension::getReportStates();
+    my %special_states =
+      Foswiki::Plugins::FoswikiGitDevPlugin::Extension::getSpecialReportStates(
+      );
+    my $invalid = 0;
+
+    writeDebug(
+        "arg: $arg, allowed: "
+          . join( ', ', keys %allowed_states )
+          . ", special: "
+          . join( ', ', keys %special_states ),
+        'doReportParseArg', 4
+    );
+    while ( my ( $key, $states ) = each %special_states ) {
+        if ( $arg eq $key ) {
+            $arg = $states;
+        }
+    }
+    foreach my $char ( split( //, $arg ) ) {
+        if ( not exists $allowed_states{$char} ) {
+            $invalid = 1;
+        }
+        else {
+            $found->{$char} = 1;
+        }
+    }
+    writeDebug( "found: " . join( ', ', keys %{$found} ) . " invalid: $invalid",
+        'doReportParseArg', 4 );
+
+    return not $invalid;
+}
+
 sub doReport {
     my ($args) = @_;
-    my @report_states;
-    my %found_states;
-    my %allowed_states =
-      ( dirty => 1, ahead => 1, behind => 1, current => 1, missing => 1 );
+    my %report_states;
     my @extensions;
 
     ASSERT( scalar( @{$args} ) > 0 );
     Foswiki::Plugins::FoswikiGitDevPlugin::init( $fetchedExtensions_dir,
         $debuglevel );
     foreach my $arg ( @{$args} ) {
-        if ( not scalar(@extensions) and $allowed_states{$arg} ) {
-            $found_states{$arg} = 1;
-        }
-        else {
+        my $valid = doReportParseArg( $arg, \%report_states );
+        if ( not $valid ) {
             push( @extensions, $arg );
         }
     }
     @extensions = expandExtensions( \@extensions );
-    if ( scalar( keys %found_states ) ) {
-        @report_states = keys %found_states;
+    if ( not scalar( keys %report_states ) ) {
+        %report_states =
+          Foswiki::Plugins::FoswikiGitDevPlugin::Extension::getReportStates();
     }
-    else {
-        @report_states = keys %allowed_states;
-    }
-
     writeDebug(
-        'Reporting whether '
-          . join( ', ', @report_states )
+        'Reporting'
+          . join( ', ', keys %report_states )
           . ' for these: '
-          . Dumper( \@extensions ),
+          . join( ', ', @extensions ),
         'doReport', 3
     );
-
     Foswiki::Plugins::FoswikiGitDevPlugin::report(
-        states     => \@report_states,
+        states     => \%report_states,
         extensions => \@extensions
     );
 
@@ -121,7 +147,7 @@ sub doCheckout {
     @extensions = @{$args}[ 1 .. ( scalar( @{$args} ) - 1 ) ];
     @extensions = expandExtensions( \@extensions );
 
-    writeDebug( "Checking out '$ref' on these: " . Dumper( \@extensions ),
+    writeDebug( "Checking out '$ref' on these: " . join( ', ', @extensions ),
         'doCheckout', 3 );
 
     return 1;

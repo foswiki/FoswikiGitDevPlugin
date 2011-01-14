@@ -61,7 +61,7 @@ sub init {
         my $dir = File::Spec->catdir( $fetchedExtensions_dir, $subdir );
         if ( $subdir ne '.' and $subdir ne '..' and -d $dir ) {
             my $name = pathToExtensionName($subdir);
-            writeDebug( "Checking $name has $dir", 'init', 4 );
+            writeDebug( "Checking $name has $dir", 'init', 5 );
             if ($name) {
                 $extensions{$name} = setupExtension( $name, $dir );
             }
@@ -100,10 +100,10 @@ sub report {
     my %states =
       Foswiki::Plugins::FoswikiGitDevPlugin::Extension::getReportStates();
     my $str = join( "\t", sort( keys %states ), 'Extension' );
+    my %boring;
 
-    foreach my $extName ( @{ $args{extensions} } ) {
-        my %extStates =
-          $extensions{$extName}->report( states => $args{states} );
+    foreach my $extName ( sort( @{ $args{extensions} } ) ) {
+        my %extStates = $extensions{$extName}->report( %{ $args{states} } );
         my $reportable;
 
         foreach my $state ( keys %states ) {
@@ -117,8 +117,16 @@ sub report {
         if ($reportable) {
             $str .= "\n" . join( "\t", sortedValues(%extStates), $extName );
         }
+        else {
+            $boring{$extName} = 1;
+        }
     }
-    print $str . "\n";
+    print $str
+      . "\nProcessed "
+      . scalar( @{ $args{extensions} } ) . ', '
+      . scalar( keys %boring )
+      . " filtered: "
+      . join( ', ', ( sort( keys %boring ) )[ 0 .. 4 ], '..' ) . "\n";
 
     return;
 }
@@ -153,7 +161,7 @@ sub gitCommand {
 
     local $ENV{PATH} = untaint( $ENV{PATH} );
 
-    writeDebug( "path: $path, command: $command", 'gitCommand', 4 );
+    writeDebug( "path: $path, command: $command", 'gitCommand', 5 );
     my $data = `cd $path && $command`;
 
     return ( $data, $? >> 8 );
@@ -198,7 +206,7 @@ sub updateExtension {
 sub setupExtension {
     my ( $name, $fullpath ) = @_;
     my $extensionObj =
-      Foswiki::Plugins::FoswikiGitDevPlugin::Extension->new( $name, undef,
+      Foswiki::Plugins::FoswikiGitDevPlugin::Extension->new( $name,
         path => $fullpath );
 
     $extensions{$name} = $extensionObj;
@@ -228,7 +236,7 @@ sub guessRemoteSiteByExtensionName {
     while ( my ( $trialname, $trialRemoteObj ) = each(%remotesites) ) {
         if ( not defined $remoteSiteObj ) {
             writeDebug( "Checking for $name in $trialname...",
-                'guessRemoteSiteByExtensionName', 4 );
+                'guessRemoteSiteByExtensionName', 5 );
             if ( $trialRemoteObj->hasExtensionName($name) ) {
                 $remoteSiteObj = $trialRemoteObj;
             }
