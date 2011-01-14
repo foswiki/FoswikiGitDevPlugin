@@ -171,10 +171,11 @@ See L<http://foswiki.org/Development/MoveCodeRepositoryToGit>
 
 =item --report [<states>]
 
-report state (M, D, A, ?, dirty...) of extension repositories or list only
-those with specified state(s) (--report MDA same as --report dirty)
+report state (M, A, D, R, C, U, ?, +, dirty...) of extension repositories or
+list only those with specified state(s) (--report MADRCU same as --report dirty)
 
-B<NOTE:> 'missing' state is mainly useful with <modules> spec of 'universe'
+B<NOTE:> '+' pseudo-state means "no filter" (report all extensions regardless
+of state), useful when you want to see the working branch name
 
 =item --fetch
 
@@ -247,9 +248,9 @@ A list (separated by spaces) of extension names, or one of the following:
 
  ./extensionsdo.pl --checkout Release01x01 default
 
-=item Report all local extensions that are ahead or dirty
+=item Report all local extensions that are dirty
 
- ./extensionsdo.pl --report ahead dirty all
+ ./extensionsdo.pl --report dirty all
 
 =back
 

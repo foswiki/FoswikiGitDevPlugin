@@ -135,6 +135,17 @@ sub isGitRepo {
     return $status;
 }
 
+sub workingBranch {
+    my ($this) = @_;
+    my ($branch) =
+      Foswiki::Plugins::FoswikiGitDevPlugin::gitCommand( $this->{path},
+        'git symbolic-ref -q HEAD' );
+    $branch =~ s{^refs/heads/}{}g;
+    $branch =~ s{[\r\n]+}{}g;
+
+    return $branch;
+}
+
 sub isBare {
     my ($this) = @_;
     my $bare;
@@ -162,8 +173,11 @@ sub getSpecialReportStates {
     return ( dirty => 'MADRCU' );
 }
 
+# %args
+#   * states => (list, of, states)
+#   * all => bool
 sub report {
-    my ( $this, %reportStates ) = @_;
+    my ( $this, %args ) = @_;
     my ($statusoutput) =
       Foswiki::Plugins::FoswikiGitDevPlugin::gitCommand( $this->{path},
         'git status --porcelain' );
@@ -171,29 +185,29 @@ sub report {
     my $reportable    = 0;
     my %allowedStates = $this->getReportStates();
 
-    if ( not scalar( keys %reportStates ) ) {
-        %reportStates = %allowedStates;
+    if ( not scalar( keys %{ $args{states} } ) ) {
+        %{ $args{sites} } = %allowedStates;
     }
 
-#	$this->writeDebug("Reporting " . join(', ', keys %reportStates), 'report', 4);
+#	$this->writeDebug("Reporting " . join(', ', keys %args{states}), 'report', 4);
 
     foreach my $line ( split( /\n/, $statusoutput ) ) {
         my ( $x, $y ) = ( $line =~ /^(.)(.)/ );
 
-        if ( $reportStates{$x} or $reportStates{$y} ) {
+        if ( $args{states}{$x} or $args{states}{$y} ) {
             $reportable = 1;
         }
         if ( $allowedStates{$x} ) {
             $states{$x} += 1;
         }
-        if ( $allowedStates{$y} ) {
+        if ( $x ne $y and $allowedStates{$y} ) {
             $states{$y} += 1;
         }
     }
 
     #	$this->writeDebug("Got " . join(', ', sort(keys %states)), 'report', 4);
 
-    return $reportable ? %states : ();
+    return ( $args{all} or $reportable ) ? %states : ();
 }
 
 sub fetch {

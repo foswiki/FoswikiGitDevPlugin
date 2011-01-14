@@ -97,25 +97,35 @@ sub sortedValues {
 
 sub report {
     my (%args) = @_;
-    my %states =
+    my %allowedStates =
       Foswiki::Plugins::FoswikiGitDevPlugin::Extension::getReportStates();
-    my $str = join( "\t", sort( keys %states ), 'Extension' );
+    my $str = join( "\t", sort( keys %allowedStates ), 'Branch', 'Extension' );
     my %boring;
 
     foreach my $extName ( sort( @{ $args{extensions} } ) ) {
-        my %extStates = $extensions{$extName}->report( %{ $args{states} } );
+        my %extStates =
+          $extensions{$extName}
+          ->report( states => $args{states}, all => $args{all} );
+        my $branch = $extensions{$extName}->workingBranch();
         my $reportable;
 
-        foreach my $state ( keys %states ) {
-            if ( $extStates{$state} ) {
+        foreach my $state ( keys %allowedStates ) {
+            if ( $args{all} ) {
+                $reportable = 1;
+                $extStates{$state} ||= '';
+            }
+            elsif ( $extStates{$state} ) {
                 $reportable = 1;
             }
             else {
                 $extStates{$state} = '';
             }
         }
-        if ($reportable) {
-            $str .= "\n" . join( "\t", sortedValues(%extStates), $extName );
+
+        #writeDebug("considering $extName, all: $args{all}", 'report', 4);
+        if ( $args{all} or $reportable ) {
+            $str .=
+              "\n" . join( "\t", sortedValues(%extStates), $branch, $extName );
         }
         else {
             $boring{$extName} = 1;
@@ -181,7 +191,7 @@ sub gitCommand {
 
     local $ENV{PATH} = untaint( $ENV{PATH} );
 
-    writeDebug( "path: $path, command: $command", 'gitCommand', 4 );
+    writeDebug( "path: $path, command: $command", 'gitCommand', 5 );
     my $data = `cd $path && $command`;
 
     return ( $data, $? >> 8 );
