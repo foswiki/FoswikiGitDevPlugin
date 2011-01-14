@@ -214,6 +214,8 @@ A list (separated by spaces) of extension names, or one of the following:
 
 =item developer - all default (core) and developer extensions
 
+=item installed - all installed extensions
+
 =back
 
 =item --usage
@@ -251,6 +253,10 @@ A list (separated by spaces) of extension names, or one of the following:
 =item Report all local extensions that are dirty
 
  ./extensionsdo.pl --report dirty all
+
+=item Report on all installed extensions
+
+ ./extensionsdo.pl --report + installed
 
 =back
 

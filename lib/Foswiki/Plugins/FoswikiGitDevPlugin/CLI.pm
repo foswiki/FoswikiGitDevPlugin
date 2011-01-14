@@ -95,7 +95,8 @@ sub doReport {
           };
     }
     writeDebug(
-        "Reporting ($reportargs{all}) "
+        "Reporting ("
+          . ( $reportargs{all} || 0 ) . ") "
           . join( ', ', keys %{ $reportargs{states} } )
           . ' for these: '
           . join( ', ', @extensions ),
@@ -191,7 +192,8 @@ sub expandExtensions {
         universe =>
           \&Foswiki::Plugins::FoswikiGitDevPlugin::listUniverseExtensionNames,
         developer => \&listDeveloperExtensionNames,
-        default   => \&listDefaultExtensionNames
+        default   => \&listDefaultExtensionNames,
+        installed => \&listInstalledExtensionNames
     );
     my @extensions;
 
@@ -231,6 +233,37 @@ sub listDefaultExtensionNames {
     close $f;
 
     return @modules;
+}
+
+sub scanDir {
+    my ( $dir, $pattern ) = @_;
+    my $dh;
+    my @nodes;
+    my @modules;
+
+    opendir( $dh, $dir ) || die "Couldn't open $dir";
+    @nodes = sort( readdir($dh) );
+    foreach my $node (@nodes) {
+        if ( $node =~ /$pattern/ ) {
+            writeDebug( "$node matched $pattern", 'scanDir', 4 );
+            if (
+                Foswiki::Plugins::FoswikiGitDevPlugin::extensionNameExists($1) )
+            {
+                push( @modules, $1 );
+            }
+        }
+    }
+
+    return @modules;
+}
+
+sub listInstalledExtensionNames {
+    my $contrib_dir =
+      File::Spec->catdir( File::Spec->splitdir($lib_dir), qw(Foswiki Contrib) );
+    my $plugins_dir =
+      File::Spec->catdir( File::Spec->splitdir($lib_dir), qw(Foswiki Plugins) );
+    return sort( scanDir( $plugins_dir, '^(.*Plugin)\.pm$' ),
+        scanDir( $contrib_dir, '^(.*(Contrib|Skin|AddOn))\.pm$' ), 'core' );
 }
 
 sub writeDebug {

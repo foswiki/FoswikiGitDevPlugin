@@ -95,6 +95,12 @@ sub sortedValues {
     return @values;
 }
 
+sub extensionNameExists {
+    my ($name) = @_;
+
+    return $extensions{$name} ? 1 : 0;
+}
+
 sub report {
     my (%args) = @_;
     my %allowedStates =
