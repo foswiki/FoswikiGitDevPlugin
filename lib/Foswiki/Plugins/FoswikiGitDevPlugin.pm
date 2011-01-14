@@ -131,6 +131,26 @@ sub report {
     return;
 }
 
+sub fetch {
+    my (%args) = @_;
+
+    foreach my $extName ( sort( @{ $args{extensions} } ) ) {
+        $extensions{$extName}->fetch();
+    }
+
+    return;
+}
+
+sub update {
+    my (%args) = @_;
+
+    foreach my $extName ( sort ( @{ $args{extensions} } ) ) {
+        $extensions{$extName}->update();
+    }
+
+    return;
+}
+
 sub pathToExtensionName {
     my ($path) = @_;
 
@@ -161,7 +181,7 @@ sub gitCommand {
 
     local $ENV{PATH} = untaint( $ENV{PATH} );
 
-    writeDebug( "path: $path, command: $command", 'gitCommand', 5 );
+    writeDebug( "path: $path, command: $command", 'gitCommand', 4 );
     my $data = `cd $path && $command`;
 
     return ( $data, $? >> 8 );
@@ -191,7 +211,8 @@ sub updateExtension {
     if ( not $extensions{$name} ) {
         writeDebug( "$name doesn't exist locally; creating",
             'updateExtension', 1 );
-        setupExtension($name);
+
+        #        setupExtension($name);
     }
     assert_not_null( $extensions{$name} );
     $extensions{$name}->doUpdate();    # If bare, this is a NOP

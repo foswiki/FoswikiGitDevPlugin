@@ -26,6 +26,7 @@ use warnings;
 use Assert;
 use Data::Dumper;
 use File::Path();
+use Foswiki::Plugins::FoswikiGitDevPlugin();
 
 #use Foswiki::Plugins::FoswikiGitDevPlugin 'Foswiki::Plugins::FoswikiGitDevPlugin::gitCommand';
 
@@ -200,7 +201,9 @@ sub fetch {
     my $status;
 
     if ( $this->getSVNURL() ) {
-        ( undef, $status ) = gitCommnad( $this->{path}, 'git svn fetch --all' );
+        ( undef, $status ) =
+          Foswiki::Plugins::FoswikiGitDevPlugin::gitCommand( $this->{path},
+            'git svn fetch --all' );
     }
     elsif ( $this->getOriginURL() ) {
         ( undef, $status ) =
@@ -224,7 +227,9 @@ sub update {
     my $status;
 
     if ( $this->getSVNURL() ) {
-        ( undef, $status ) = gitCommnad( $this->{path}, 'git svn rebase' );
+        ( undef, $status ) =
+          Foswiki::Plugins::FoswikiGitDevPlugin::gitCommand( $this->{path},
+            'git svn rebase' );
     }
     elsif ( $this->getOriginURL() ) {
         ( undef, $status ) =

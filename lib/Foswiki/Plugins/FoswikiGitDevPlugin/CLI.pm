@@ -89,7 +89,7 @@ sub doReport {
           Foswiki::Plugins::FoswikiGitDevPlugin::Extension::getReportStates();
     }
     writeDebug(
-        'Reporting'
+        'Reporting '
           . join( ', ', keys %report_states )
           . ' for these: '
           . join( ', ', @extensions ),
@@ -113,7 +113,8 @@ sub doFetch {
 
     @extensions = expandExtensions($args);
 
-    writeDebug( "Fetching these: " . Dumper( \@extensions ), 'doFetch', 3 );
+    writeDebug( "Fetching " . join( ', ', sort(@extensions) ), 'doFetch', 3 );
+    Foswiki::Plugins::FoswikiGitDevPlugin::fetch( extensions => \@extensions );
 
     return 1;
 }
@@ -128,7 +129,8 @@ sub doUpdate {
         $debuglevel );
     @extensions = expandExtensions($args);
 
-    writeDebug( "Updating these: " . Dumper( \@extensions ), 'doUpdate', 3 );
+    writeDebug( "Updating " . join( ', ', sort(@extensions) ), 'doUpdate', 3 );
+    Foswiki::Plugins::FoswikiGitDevPlugin::update( extensions => \@extensions );
 
     return 1;
 }
@@ -149,6 +151,10 @@ sub doCheckout {
 
     writeDebug( "Checking out '$ref' on these: " . join( ', ', @extensions ),
         'doCheckout', 3 );
+    Foswiki::Plugins::FoswikiGitDevPlugin::checkout(
+        extensions => \@extensions,
+        ref        => $ref
+    );
 
     return 1;
 
