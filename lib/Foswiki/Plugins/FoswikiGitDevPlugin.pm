@@ -63,7 +63,7 @@ sub init {
             my $name = pathToExtensionName($subdir);
             writeDebug( "Checking $name has $dir", 'init', 5 );
             if ($name) {
-                $extensions{$name} = setupExtension( $name, $dir );
+				setupExtension( $name, $dir );
             }
             else {
                 writeDebug( "$dir doesn't look like an extension name",
@@ -109,24 +109,27 @@ sub report {
     my %boring;
 
     foreach my $extName ( sort( @{ $args{extensions} } ) ) {
-        my %extStates =
-          $extensions{$extName}
-          ->report( states => $args{states}, all => $args{all} );
-        my $branch = $extensions{$extName}->workingBranch();
+		my $extObj = $extensions{$extName};
+        my %extStates;
+        my $branch;
         my $reportable;
 
-        foreach my $state ( keys %allowedStates ) {
-            if ( $args{all} ) {
-                $reportable = 1;
-                $extStates{$state} ||= '';
-            }
-            elsif ( $extStates{$state} ) {
-                $reportable = 1;
-            }
-            else {
-                $extStates{$state} = '';
-            }
-        }
+        if ($extObj) {
+			%extStates = $extObj->report( states => $args{states}, all => $args{all} );
+			$branch = $extObj->workingBranch();
+			foreach my $state ( keys %allowedStates ) {
+				if ( $args{all} ) {
+					$reportable = 1;
+					$extStates{$state} ||= '';
+				}
+				elsif ( $extStates{$state} ) {
+					$reportable = 1;
+				}
+				else {
+					$extStates{$state} = '';
+				}
+			}
+		}
 
         #writeDebug("considering $extName, all: $args{all}", 'report', 4);
         if ( $args{all} or $reportable ) {
@@ -246,7 +249,9 @@ sub setupExtension {
       Foswiki::Plugins::FoswikiGitDevPlugin::Extension->new( $name,
         path => $fullpath );
 
-    $extensions{$name} = $extensionObj;
+    if ($extensionObj) {
+		$extensions{$name} = $extensionObj;
+	}
 
     return $extensionObj;
 }
