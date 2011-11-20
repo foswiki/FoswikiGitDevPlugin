@@ -1,9 +1,0 @@
-data/System/FoswikiGitDevPlugin.txt 0644
-extensionsdo.pl 0755
-lib/Foswiki/Plugins/FoswikiGitDevPlugin.pm 0644
-lib/Foswiki/Plugins/FoswikiGitDevPlugin/CLI.pm 0644
-lib/Foswiki/Plugins/FoswikiGitDevPlugin/Config.spec 0644
-lib/Foswiki/Plugins/FoswikiGitDevPlugin/Extension.pm 0644
-lib/Foswiki/Plugins/FoswikiGitDevPlugin/RemoteSiteType.pm 0644
-lib/Foswiki/Plugins/FoswikiGitDevPlugin/RemoteSiteTypeGitTrackingSVN.pm 0644
-lib/Foswiki/Plugins/FoswikiGitDevPlugin/RemoteSiteTypeSVN.pm 0644
